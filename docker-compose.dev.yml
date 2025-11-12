@@ -1,0 +1,25 @@
+version: '3.8'
+
+# Development overrides
+services:
+  backend:
+    build:
+      target: development
+    environment:
+      - NODE_ENV=development
+    command: npm run dev  # Assumes you have a dev script with nodemon
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      target: development
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"  # Default Vite dev server port
