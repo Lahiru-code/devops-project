@@ -1,0 +1,46 @@
+{
+    "repositories": [
+        {
+            "repositoryArn": "arn:aws:ecr:ap-south-1:179707674384:repository/myapp",
+            "registryId": "179707674384",
+            "repositoryName": "myapp",
+            "repositoryUri": "179707674384.dkr.ecr.ap-south-1.amazonaws.com/myapp",
+            "createdAt": "2026-02-09T16:55:54.920000+05:30",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": false
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:ap-south-1:179707674384:repository/backend",
+            "registryId": "179707674384",
+            "repositoryName": "backend",
+            "repositoryUri": "179707674384.dkr.ecr.ap-south-1.amazonaws.com/backend",
+            "createdAt": "2026-02-09T17:05:33.583000+05:30",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": false
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:ap-south-1:179707674384:repository/frontend",
+            "registryId": "179707674384",
+            "repositoryName": "frontend",
+            "repositoryUri": "179707674384.dkr.ecr.ap-south-1.amazonaws.com/frontend",
+            "createdAt": "2026-02-09T17:05:54.360000+05:30",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": false
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        }
+    ]
+}

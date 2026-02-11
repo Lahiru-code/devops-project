@@ -1,0 +1,58 @@
+{
+    "family":  "bookstore-backend",
+    "executionRoleArn":  "arn:aws:iam::179707674384:role/bookstore-task-exec",
+    "networkMode":  "awsvpc",
+    "containerDefinitions":  [
+                                 {
+                                     "name":  "backend",
+                                     "image":  "179707674384.dkr.ecr.ap-south-1.amazonaws.com/backend:latest",
+                                     "cpu":  0,
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  5000,
+                                                              "hostPort":  5000,
+                                                              "protocol":  "tcp"
+                                                          }
+                                                      ],
+                                     "essential":  true,
+                                     "environment":  [
+                                                         {
+                                                             "name":  "JWT_SECRET",
+                                                             "value":  "cadb598eeb9251d8fbe8d2d591c38ee0094a8a7556739191b62e13779622a922b8c7a8e69b50f9f8b1a04c38b70c51cb1c516ee184936459a6b4a632c1885244"
+                                                         },
+                                                         {
+                                                             "name":  "DB_URL",
+                                                             "value":  "mongodb+srv://xxx:3YTgtmZbl9tNDGTC@cluster0.qa9derj.mongodb.net/test?retryWrites=true\u0026w=majority\u0026appName=Cluster0"
+                                                         }
+                                                     ],
+                                     "mountPoints":  [
+
+                                                     ],
+                                     "volumesFrom":  [
+
+                                                     ],
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-group":  "/ecs/bookstore-backend",
+                                                                              "awslogs-region":  "ap-south-1",
+                                                                              "awslogs-stream-prefix":  "ecs"
+                                                                          }
+                                                          },
+                                     "systemControls":  [
+
+                                                        ]
+                                 }
+                             ],
+    "volumes":  [
+
+                ],
+    "placementConstraints":  [
+
+                             ],
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "cpu":  "256",
+    "memory":  "512"
+}

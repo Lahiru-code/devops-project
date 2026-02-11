@@ -43,7 +43,7 @@ const Recommened = () => {
         className="mySwiper"
       >
         {books.length > 0 &&
-          books.slice(8, 18).map((book, index) => (
+          books.slice(0, 6).map((book, index) => (
             <SwiperSlide key={index}>
               <BookCard book={book} />
             </SwiperSlide>

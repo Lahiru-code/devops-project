@@ -1,0 +1,729 @@
+# CI/CD Design Diagram - Book Store Application Deployment
+
+## Diagram Overview
+
+This diagram represents a complete DevOps pipeline for deploying a MERN Stack Book Store Application across development, staging, and production environments using modern Infrastructure as Code (IaC) and container orchestration practices.
+
+---
+
+## Architecture Components & Flow
+
+### **PART 1: SOURCE CONTROL LAYER (Git)**
+
+```
+┌─────────────────────────────────────────────────┐
+│         DEVELOPER WORKSTATION                   │
+│  ┌────────────────────────────────────────────┐ │
+│  │  - Write Code (Frontend/Backend)           │ │
+│  │  - Commit Changes                          │ │
+│  │  - Push to Git Repository                  │ │
+│  └────────────────────────────────────────────┘ │
+└────────────────┬────────────────────────────────┘
+                 │ Commit/Push Code
+                 ▼
+        ┌─────────────────────┐
+        │  GitHub Repository  │
+        │  ┌─────────────────┐│
+        │  │ main (Prod)     ││
+        │  │ develop (Stage) ││
+        │  │ feature/* (Dev) ││
+        │  └─────────────────┘│
+        └────────────┬────────┘
+                     │ Webhook Trigger
+                     ▼
+```
+
+**Key Components:**
+
+- **Source Code Repositories:** Branches for main (production), develop (staging), feature (development)
+- **Version Control:** Git with branch protection rules
+- **Webhooks:** Automatic trigger to Jenkins on code push
+
+---
+
+### **PART 2: CI/CD ORCHESTRATION LAYER (Jenkins)**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    JENKINS CI/CD SERVER                       │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ Environment Variables:                                 │  │
+│  │ • FRONTEND_IMAGE = lahiru2002/frontend-app            │  │
+│  │ • BACKEND_IMAGE = lahiru2002/backend-app             │  │
+│  │ • MONGODB_IMAGE = mongo:latest                        │  │
+│  │ • GIT_REPO = https://github.com/Lahiru-code/...      │  │
+│  │ • NODE_ENV = production                               │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  PIPELINE STAGES:                                              │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 1: Clone Repository                              │ │
+│  │ └─ git clone from GitHub (main/develop)                │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 2: Code Quality Analysis                          │ │
+│  │ ├─ ESLint (Frontend)                                   │ │
+│  │ ├─ SonarQube (Code scanning)                           │ │
+│  │ └─ Generate reports                                   │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 3: Build & Unit Tests                            │ │
+│  │ ├─ Frontend: npm install → npm run build (Vite)        │ │
+│  │ ├─ Backend: npm install → npm test                    │ │
+│  │ └─ Generate artifacts                                 │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 4: Containerization (Docker Build)               │ │
+│  │ ├─ Build Frontend Image:                               │ │
+│  │ │  └─ frontend/Dockerfile → Node:18-alpine + Nginx    │ │
+│  │ ├─ Build Backend Image:                                │ │
+│  │ │  └─ backend/Dockerfile → Node:18-alpine             │ │
+│  │ └─ Security Scan (Trivy):                              │ │
+│  │    └─ Detect vulnerabilities in images                │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 5: Push to Docker Registry                       │ │
+│  │ ├─ Login to Docker Hub                                │ │
+│  │ ├─ Push Frontend Image: lahiru2002/frontend-app        │ │
+│  │ ├─ Push Backend Image: lahiru2002/backend-app         │ │
+│  │ └─ Docker Logout                                      │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 6: Infrastructure Provisioning (Terraform)       │ │
+│  │ ├─ Validate .tf files                                  │ │
+│  │ ├─ Plan infrastructure                                 │ │
+│  │ └─ Apply configuration:                                │ │
+│  │    ├─ Create Kubernetes Cluster (GKE/EKS/AKS)        │ │
+│  │    ├─ VPC & Networking                                │ │
+│  │    ├─ Load Balancers                                  │ │
+│  │    ├─ Persistent Storage (PVs)                        │ │
+│  │    └─ Security Groups                                 │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 7: Configuration Management (Ansible)            │ │
+│  │ ├─ Inventory: Host groups (prod/staging/dev)           │ │
+│  │ ├─ Playbooks:                                          │ │
+│  │ │  ├─ Install Docker runtime                          │ │
+│  │ │  ├─ Configure networking                            │ │
+│  │ │  ├─ Deploy security patches                         │ │
+│  │ │  ├─ Mount storage volumes                           │ │
+│  │ │  └─ Setup monitoring agents                         │ │
+│  │ └─ Run on target servers                               │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 8: Kubernetes Deployment (kubectl)               │ │
+│  │ ├─ Create/Update ConfigMaps                            │ │
+│  │ ├─ Apply Secrets                                       │ │
+│  │ ├─ Deploy Services:                                    │ │
+│  │ │  ├─ Frontend Deployment (replicas: 2-5)            │ │
+│  │ │  ├─ Backend Deployment (replicas: 2-5)             │ │
+│  │ │  └─ MongoDB StatefulSet (replicas: 1)              │ │
+│  │ ├─ Configure Ingress & Load Balancing                 │ │
+│  │ ├─ Setup Health Checks (Liveness & Readiness)         │ │
+│  │ └─ Enable Auto-scaling (HPA)                          │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Stage 9: Testing & Validation                          │ │
+│  │ ├─ Health Checks:                                      │ │
+│  │ │  ├─ Frontend: HTTP GET / → 200 OK                   │ │
+│  │ │  ├─ Backend: HTTP GET /api/health → 200 OK          │ │
+│  │ │  └─ Database: MongoDB connectivity test             │ │
+│  │ ├─ API Integration Tests                               │ │
+│  │ ├─ Smoke Tests                                         │ │
+│  │ └─ Generate test reports                               │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                           │                                    │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │ Post Actions:                                          │ │
+│  │ ├─ Docker Logout                                       │ │
+│  │ ├─ Cleanup workspace                                   │ │
+│  │ └─ Notifications:                                      │ │
+│  │    ├─ Slack message                                   │ │
+│  │    ├─ Email notification                              │ │
+│  │    └─ Update dashboard                                │ │
+│  └──────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Key Features:**
+
+- Automated pipeline triggered by git webhooks
+- Multi-stage build, test, and deployment process
+- Security scanning at containerization stage
+- Environment-specific configurations
+- Comprehensive post-deployment validation
+
+---
+
+### **PART 3: INFRASTRUCTURE AS CODE LAYER**
+
+#### **Terraform (Infrastructure Provisioning)**
+
+```
+┌────────────────────────────────────────────┐
+│  TERRAFORM MODULES                         │
+├────────────────────────────────────────────┤
+│                                            │
+│  1. VPC & Networking                       │
+│     ├─ Virtual Private Cloud               │
+│     ├─ Public & Private Subnets           │
+│     └─ Internet Gateway & NAT              │
+│                                            │
+│  2. Kubernetes Cluster                     │
+│     ├─ GKE/EKS/AKS Setup                   │
+│     ├─ Node Pools Configuration            │
+│     └─ RBAC & Service Accounts             │
+│                                            │
+│  3. Storage                                │
+│     ├─ Persistent Volumes (SSD)            │
+│     ├─ Cloud Storage (for backups)        │
+│     └─ Database persistence config         │
+│                                            │
+│  4. Load Balancers & Ingress               │
+│     ├─ Network Load Balancer               │
+│     ├─ Cloud Load Balancer                 │
+│     └─ Ingress Controller Setup            │
+│                                            │
+│  5. Security & Monitoring                  │
+│     ├─ Security Groups                     │
+│     ├─ Network Policies                    │
+│     └─ CloudWatch/Stackdriver              │
+│                                            │
+└────────────────────────────────────────────┘
+```
+
+#### **Ansible (Configuration Management)**
+
+```
+┌────────────────────────────────────────────┐
+│  ANSIBLE PLAYBOOKS                         │
+├────────────────────────────────────────────┤
+│                                            │
+│  Inventory: Development, Staging, Prod    │
+│                                            │
+│  Playbooks:                                │
+│  ├─ docker-setup.yml                       │
+│  │  └─ Install Docker, Docker Compose    │
+│  │                                        │
+│  ├─ network-config.yml                     │
+│  │  └─ Configure networking, DNS         │
+│  │                                        │
+│  ├─ security-hardening.yml                │
+│  │  ├─ Firewall rules                    │
+│  │  ├─ SSH key management                │
+│  │  └─ Security patches                  │
+│  │                                        │
+│  ├─ storage-setup.yml                      │
+│  │  └─ Mount volumes, permissions        │
+│  │                                        │
+│  └─ monitoring-setup.yml                   │
+│     ├─ Prometheus agent                   │
+│     └─ Log collector setup                │
+│                                            │
+└────────────────────────────────────────────┘
+```
+
+---
+
+### **PART 4: CONTAINER REGISTRY**
+
+```
+┌──────────────────────────────────────────────────┐
+│         DOCKER HUB (Container Registry)           │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│  lahiru2002/frontend-app                         │
+│  ├─ Tags: latest, v1.0.0, ${BUILD_NUMBER}      │
+│  ├─ Size: ~100MB (Nginx-based)                  │
+│  └─ Availability: Public/Private                │
+│                                                  │
+│  lahiru2002/backend-app                          │
+│  ├─ Tags: latest, v1.0.0, ${BUILD_NUMBER}      │
+│  ├─ Size: ~300MB (Node.js-based)                │
+│  └─ Availability: Public/Private                │
+│                                                  │
+│  mongo (Official)                                │
+│  ├─ Tags: latest, 6.0.x                         │
+│  └─ Official MongoDB image                      │
+│                                                  │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+### **PART 5: DEPLOYMENT ENVIRONMENTS**
+
+#### **PRODUCTION ENVIRONMENT (Kubernetes Cluster)**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                  KUBERNETES CLUSTER (GKE/EKS/AKS)                │
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │ NAMESPACE: production                                        ││
+│  │                                                              ││
+│  │ ┌─────────────────────────────────────────────────────────┐ ││
+│  │ │ FRONTEND DEPLOYMENT (Nginx)                            │ ││
+│  │ ├─────────────────────────────────────────────────────────┤ ││
+│  │ │ • Image: lahiru2002/frontend-app:latest               │ ││
+│  │ │ • Port: 80 (HTTP)                                     │ ││
+│  │ │ • Replicas: 2-5 (Auto-scaling: HPA)                  │ ││
+│  │ │ • Resources:                                          │ ││
+│  │ │   - CPU: 100m request, 500m limit                    │ ││
+│  │ │   - Memory: 128Mi request, 256Mi limit               │ ││
+│  │ │ • Health Check:                                       │ ││
+│  │ │   - Readiness: GET / (200 OK)                        │ ││
+│  │ │   - Liveness: GET /health                            │ ││
+│  │ │ • Service: LoadBalancer (External IP)                │ ││
+│  │ │ • Ingress: frontend.domain.com                       │ ││
+│  │ │ • Environment (ConfigMap):                           │ ││
+│  │ │   - NODE_ENV=production                              │ ││
+│  │ │   - VITE_API_URL=https://api.domain.com              │ ││
+│  │ └─────────────────────────────────────────────────────────┘ ││
+│  │                         ↕ (Service-to-Service)               ││
+│  │ ┌─────────────────────────────────────────────────────────┐ ││
+│  │ │ BACKEND DEPLOYMENT (Node.js/Express)                  │ ││
+│  │ ├─────────────────────────────────────────────────────────┤ ││
+│  │ │ • Image: lahiru2002/backend-app:latest               │ ││
+│  │ │ • Port: 5000 (API)                                   │ ││
+│  │ │ • Replicas: 2-5 (Auto-scaling: HPA)                 │ ││
+│  │ │ • Resources:                                         │ ││
+│  │ │   - CPU: 200m request, 1000m limit                  │ ││
+│  │ │   - Memory: 256Mi request, 512Mi limit              │ ││
+│  │ │ • Health Check:                                      │ ││
+│  │ │   - Readiness: GET /api/health                       │ ││
+│  │ │   - Liveness: GET /health (with timeout)             │ ││
+│  │ │ • Service: ClusterIP (Internal only)                │ ││
+│  │ │ • Environment (ConfigMap):                          │ ││
+│  │ │   - NODE_ENV=production                             │ ││
+│  │ │   - PORT=5000                                        │ ││
+│  │ │   - DB_URL=mongodb://mongodb-service:27017/bookstore│ ││
+│  │ │ • Secrets:                                           │ ││
+│  │ │   - JWT_SECRET (base64 encoded)                     │ ││
+│  │ │   - MONGO_USER, MONGO_PASSWORD                      │ ││
+│  │ │ • Volume Mounts: (for logs & temp storage)           │ ││
+│  │ └─────────────────────────────────────────────────────────┘ ││
+│  │                         ↕ (Database Connection)              ││
+│  │ ┌─────────────────────────────────────────────────────────┐ ││
+│  │ │ MONGODB STATEFULSET                                   │ ││
+│  │ ├─────────────────────────────────────────────────────────┤ ││
+│  │ │ • Image: mongo:latest                                │ ││
+│  │ │ • Port: 27017                                        │ ││
+│  │ │ • Replicas: 1 (Primary + optional replicas)         │ ││
+│  │ │ • Persistent Volume Claim:                          │ ││
+│  │ │   - Storage: 10Gi (production: 50Gi+)               │ ││
+│  │ │   - Storage Class: fast-ssd                         │ ││
+│  │ │   - Mount Path: /data/db                            │ ││
+│  │ │ • Service: mongodb-service (Headless ClusterIP)     │ ││
+│  │ │ • Secrets:                                          │ ││
+│  │ │   - MONGO_INITDB_ROOT_USERNAME                      │ ││
+│  │ │   - MONGO_INITDB_ROOT_PASSWORD                      │ ││
+│  │ │ • Backup Strategy:                                  │ ││
+│  │ │   - Daily snapshots to Cloud Storage                │ ││
+│  │ │   - Point-in-time recovery enabled                 │ ││
+│  │ └─────────────────────────────────────────────────────────┘ ││
+│  │                                                              ││
+│  │ ┌─────────────────────────────────────────────────────────┐ ││
+│  │ │ INGRESS CONTROLLER (Nginx/Cloud LB)                   │ ││
+│  │ ├─────────────────────────────────────────────────────────┤ ││
+│  │ │ • Type: Nginx Ingress / Cloud Load Balancer          │ ││
+│  │ │ • Routes:                                            │ ││
+│  │ │   - domain.com → Frontend Service (port 80)         │ ││
+│  │ │   - api.domain.com → Backend Service (port 5000)    │ ││
+│  │ │   - admin.domain.com → Admin Dashboard              │ ││
+│  │ │ • TLS/SSL:                                           │ ││
+│  │ │   - Certificates: Let's Encrypt (cert-manager)      │ ││
+│  │ │   - Auto-renewal enabled                            │ ││
+│  │ │ • Security:                                          │ ││
+│  │ │   - Rate limiting                                   │ ││
+│  │ │   - WAF rules (optional)                            │ ││
+│  │ │   - CORS policies                                   │ ││
+│  │ └─────────────────────────────────────────────────────────┘ ││
+│  │                                                              ││
+│  │ ┌─────────────────────────────────────────────────────────┐ ││
+│  │ │ NETWORK POLICIES                                       │ ││
+│  │ ├─────────────────────────────────────────────────────────┤ ││
+│  │ │ • Frontend ↔ Ingress: ALLOW (HTTP/HTTPS)            │ ││
+│  │ │ • Frontend ↔ Backend: ALLOW (Internal)              │ ││
+│  │ │ • Backend ↔ MongoDB: ALLOW (Internal)               │ ││
+│  │ │ • All → DNS: ALLOW (port 53)                        │ ││
+│  │ │ • External → MongoDB: DENY (isolated)               │ ││
+│  │ │ • Egress: Allow Docker Hub, GitHub                  │ ││
+│  │ └─────────────────────────────────────────────────────────┘ ││
+│  │                                                              ││
+│  │ ┌─────────────────────────────────────────────────────────┐ ││
+│  │ │ MONITORING & LOGGING                                   │ ││
+│  │ ├─────────────────────────────────────────────────────────┤ ││
+│  │ │ • Prometheus: Metrics collection                     │ ││
+│  │ │ • Grafana: Dashboards & visualization                │ ││
+│  │ │ • Loki/ELK: Log aggregation                          │ ││
+│  │ │ • Alertmanager: Alert notifications                 │ ││
+│  │ │ • Custom Dashboards:                                │ ││
+│  │ │   - Pod health & resource usage                    │ ││
+│  │ │   - API response times                             │ ││
+│  │ │   - Database performance metrics                   │ ││
+│  │ │   - Error rates & logs                             │ ││
+│  │ └─────────────────────────────────────────────────────────┘ ││
+│  └──────────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────┘
+```
+
+#### **STAGING ENVIRONMENT (Alternative Deployment)**
+
+```
+┌──────────────────────────────────────────────┐
+│  STAGING (Docker Compose on VM)              │
+├──────────────────────────────────────────────┤
+│                                              │
+│  VM Instance (Linux)                         │
+│  ├─ Docker Runtime                           │
+│  ├─ docker-compose.yml                       │
+│  └─ Services:                                │
+│     ├─ Frontend (port 80)                   │
+│     ├─ Backend (port 5000)                  │
+│     └─ MongoDB (port 27017)                 │
+│                                              │
+│  Single Load Balancer (HAProxy/Nginx)        │
+│                                              │
+└──────────────────────────────────────────────┘
+```
+
+---
+
+### **PART 6: NETWORKING & CONNECTIVITY**
+
+#### **Infrastructure Level**
+
+```
+┌────────────────────────────────────────────────────────┐
+│                    CLOUD PROVIDER (GCP/AWS/Azure)       │
+│                                                        │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ VPC (Virtual Private Cloud)                    │  │
+│  │ ┌────────────────────────────────────────────┐ │  │
+│  │ │ Public Subnets                            │ │  │
+│  │ │ ├─ Internet Gateway (IGW)                │ │  │
+│  │ │ └─ Load Balancer (public facing)          │ │  │
+│  │ └────────────────────────────────────────────┘ │  │
+│  │              ↕                                   │  │
+│  │ ┌────────────────────────────────────────────┐ │  │
+│  │ │ Private Subnets (Kubernetes Cluster)      │ │  │
+│  │ │ ├─ Master Nodes                           │ │  │
+│  │ │ ├─ Worker Nodes                           │ │  │
+│  │ │ └─ NAT Gateway (for egress)               │ │  │
+│  │ └────────────────────────────────────────────┘ │  │
+│  │                                                 │  │
+│  │ Security Groups:                                │  │
+│  │ ├─ Ingress: HTTP(80), HTTPS(443), SSH(22)    │  │
+│  │ ├─ Egress: All protocols (to external)       │  │
+│  │ └─ Pod-to-Pod: Allow via Network Policies    │  │
+│  │                                                 │  │
+│  │ DNS Configuration:                              │  │
+│  │ ├─ A Records: domain.com → Load Balancer IP │  │
+│  │ ├─ CNAME: api.domain.com → domain.com       │  │
+│  │ └─ CNAME: admin.domain.com → domain.com     │  │
+│  └─────────────────────────────────────────────────┘  │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+```
+
+#### **Application Level (Container-to-Container Communication)**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│           APPLICATION COMPONENT CONNECTIVITY                 │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  USERS/INTERNET                                             │
+│        ↓ (HTTPS/HTTP)                                       │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ LOAD BALANCER / INGRESS CONTROLLER                 │   │
+│  └─────────────────────────────────────────────────────┘   │
+│        ↓ (Port 80/443)                                      │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         FRONTEND PODS (Nginx)                       │  │
+│  │  Serving: HTML, CSS, JS, Assets                    │  │
+│  │  Listening on: Port 80                             │  │
+│  │  ├─ /index.html                                    │  │
+│  │  ├─ /app.jsx                                       │  │
+│  │  ├─ /assets/* (images, fonts)                      │  │
+│  │  └─ Bundle: React app from build                  │  │
+│  │                                                    │  │
+│  │  Communication: HTTP Requests to Backend           │  │
+│  └──────────────────────────────────────────────────────┘  │
+│        ↓ (HTTP REST API)                                    │
+│        │ URL: http://backend-service:5000/api              │
+│        │                                                     │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         BACKEND PODS (Node.js/Express)              │  │
+│  │  Routes & Endpoints:                               │  │
+│  │                                                    │  │
+│  │  • GET /api/books                                 │  │
+│  │    └─ Fetch all books from database               │  │
+│  │                                                    │  │
+│  │  • GET /api/books/:id                             │  │
+│  │    └─ Fetch single book by ID                     │  │
+│  │                                                    │  │
+│  │  • POST /api/users/register                       │  │
+│  │    └─ Create new user account                     │  │
+│  │                                                    │  │
+│  │  • POST /api/users/login                          │  │
+│  │    └─ Authenticate user (JWT token)               │  │
+│  │                                                    │  │
+│  │  • POST /api/orders                               │  │
+│  │    └─ Create new order (protected route)          │  │
+│  │                                                    │  │
+│  │  • GET /api/admin/stats                           │  │
+│  │    └─ Admin dashboard statistics                  │  │
+│  │                                                    │  │
+│  │  • GET /api/admin/manage-books                    │  │
+│  │    └─ Admin book management interface             │  │
+│  │                                                    │  │
+│  │  • POST /api/admin/add-book                       │  │
+│  │    └─ Add new book to inventory                   │  │
+│  │                                                    │  │
+│  │  Port: 5000                                       │  │
+│  │  Service Type: ClusterIP (internal only)          │  │
+│  │  Database Connection: MongoDB                     │  │
+│  │  Auth: JWT tokens in headers                      │  │
+│  └──────────────────────────────────────────────────────┘  │
+│        ↓ (MongoDB Connection String)                        │
+│        │ URI: mongodb://user:pass@mongodb-service:27017    │
+│        │                                                     │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         MONGODB STATEFULSET                         │  │
+│  │  Database: bookstore                               │  │
+│  │  Port: 27017                                        │  │
+│  │                                                    │  │
+│  │  Collections:                                      │  │
+│  │  ├─ users                                         │  │
+│  │  │  └─ Fields: _id, email, password, name, role  │  │
+│  │  ├─ books                                         │  │
+│  │  │  └─ Fields: _id, title, author, price, cover  │  │
+│  │  ├─ orders                                        │  │
+│  │  │  └─ Fields: _id, userId, books[], total       │  │
+│  │  ├─ stats                                         │  │
+│  │  │  └─ Fields: _id, date, revenue, orders_count │  │
+│  │  └─ admin_logs                                    │  │
+│  │     └─ Fields: _id, action, admin_id, timestamp  │  │
+│  │                                                    │  │
+│  │  Backup Location: Cloud Storage (daily snapshots) │  │
+│  │  Replication: Primary (optional: secondary)       │  │
+│  │  Access: ClusterIP (internal only)                │  │
+│  │  Persistence: PVC - /data/db mount                │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                              │
+│  EXTERNAL SERVICES (Optional):                              │
+│  ├─ Firebase Authentication API (HTTPS)                    │
+│  ├─ Email Service (SendGrid/AWS SES)                       │
+│  └─ Payment Gateway (Stripe/PayPal)                        │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## **COMPLETE DATA FLOW SUMMARY**
+
+```
+1. DEVELOPER PHASE:
+   Developer → Write Code → Commit → Push to GitHub
+
+2. TRIGGER PHASE:
+   GitHub Webhook → Jenkins Pipeline Triggered
+
+3. BUILD PHASE:
+   Jenkins Agent:
+   ├─ Clone Repository
+   ├─ Run Code Quality Checks
+   ├─ Build Frontend (Vite bundle)
+   ├─ Build Backend (Node.js app)
+   ├─ Run Unit Tests
+   └─ Generate Build Artifacts
+
+4. CONTAINERIZATION PHASE:
+   ├─ Build Frontend Docker Image (Nginx)
+   ├─ Build Backend Docker Image (Node.js)
+   ├─ Security Scan (Trivy)
+   └─ Push to Docker Hub
+
+5. INFRASTRUCTURE PHASE:
+   ├─ Terraform: Provision Cloud Resources (K8s cluster, networking)
+   └─ Ansible: Configure Systems (Docker, security, monitoring)
+
+6. DEPLOYMENT PHASE:
+   Kubernetes:
+   ├─ Pull Images from Docker Hub
+   ├─ Create ConfigMaps (environment variables)
+   ├─ Create Secrets (credentials)
+   ├─ Deploy Frontend Pods
+   ├─ Deploy Backend Pods
+   ├─ Deploy MongoDB StatefulSet
+   ├─ Configure Ingress & LoadBalancer
+   └─ Enable Health Checks & Auto-scaling
+
+7. VALIDATION PHASE:
+   ├─ Health Checks (Frontend, Backend, Database)
+   ├─ API Integration Tests
+   ├─ Smoke Tests
+   └─ Generate Test Reports
+
+8. MONITORING PHASE:
+   Continuous Monitoring:
+   ├─ Prometheus collects metrics
+   ├─ Grafana visualizes data
+   ├─ Loki aggregates logs
+   └─ Alerts on anomalies
+
+9. USER ACCESS PHASE:
+   Users → Load Balancer → Frontend Pods
+   Frontend → Backend Service (API calls)
+   Backend → MongoDB (data queries)
+   Responses → Users
+```
+
+---
+
+## **Key Connectivity Points**
+
+| Connection                 | Type      | Protocol   | Port   | Authentication    |
+| -------------------------- | --------- | ---------- | ------ | ----------------- |
+| Developer → Git            | Push      | HTTPS      | 443    | SSH Key/Token     |
+| Git → Jenkins              | Webhook   | HTTPS      | 443    | Secret Token      |
+| Jenkins → Docker Hub       | Push      | HTTPS      | 443    | Username/Password |
+| Jenkins → Terraform        | IaC       | Local      | -      | Cloud API Keys    |
+| Jenkins → Kubernetes       | Deploy    | HTTPS      | 6443   | Service Account   |
+| Terraform → Cloud Provider | Provision | HTTPS      | 443    | API Keys          |
+| Ansible → VMs              | Config    | SSH        | 22     | SSH Key           |
+| Frontend → Backend         | API       | HTTP/S     | 80/443 | JWT Token         |
+| Backend → MongoDB          | DB Query  | MongoDB    | 27017  | Username/Password |
+| External → Ingress         | HTTP/S    | HTTP/HTTPS | 80/443 | TLS Certificate   |
+| Ingress → Frontend         | Route     | HTTP       | 80     | Internal          |
+| Frontend → Kubernetes      | Deploy    | Local      | -      | Kubectl Config    |
+
+---
+
+## **Security Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SECURITY LAYERS                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Layer 1: Source Control Security                           │
+│  ├─ GitHub branch protection rules                         │
+│  ├─ Code review requirements                               │
+│  └─ SSH key management                                     │
+│                                                             │
+│  Layer 2: CI/CD Security                                    │
+│  ├─ Jenkins credential store                               │
+│  ├─ Secret encryption                                      │
+│  └─ Build log masking                                      │
+│                                                             │
+│  Layer 3: Image Security                                    │
+│  ├─ Container image scanning (Trivy)                       │
+│  ├─ Vulnerability detection                                │
+│  └─ Registry authentication                                │
+│                                                             │
+│  Layer 4: Infrastructure Security                           │
+│  ├─ VPC isolation                                          │
+│  ├─ Security groups/Network policies                       │
+│  ├─ Encryption at rest & in transit                        │
+│  └─ Firewall rules                                         │
+│                                                             │
+│  Layer 5: Application Security                              │
+│  ├─ JWT token authentication                               │
+│  ├─ Role-based access control (RBAC)                       │
+│  ├─ CORS policies                                          │
+│  └─ Rate limiting                                          │
+│                                                             │
+│  Layer 6: Kubernetes Security                               │
+│  ├─ Network policies                                       │
+│  ├─ Pod security policies                                  │
+│  ├─ RBAC for service accounts                              │
+│  └─ Secrets management                                     │
+│                                                             │
+│  Layer 7: Database Security                                 │
+│  ├─ Encrypted connections                                  │
+│  ├─ User authentication                                    │
+│  ├─ Access control (internal only)                         │
+│  └─ Regular backups                                        │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## **Deployment Environments Summary**
+
+| Environment | Type           | Tools           | Scaling | Replicas | Usage          |
+| ----------- | -------------- | --------------- | ------- | -------- | -------------- |
+| Development | Docker Compose | Docker          | Manual  | 1        | Development    |
+| Staging     | Kubernetes     | kubectl, Helm   | HPA     | 2-3      | Pre-production |
+| Production  | Kubernetes     | kubectl, GitOps | HPA     | 2-5      | Live Users     |
+
+---
+
+## **Benefits of This Architecture**
+
+✅ **Automation**: Fully automated CI/CD pipeline  
+✅ **Scalability**: Auto-scaling pods based on load  
+✅ **Reliability**: Multiple replicas, health checks, self-healing  
+✅ **Security**: Multi-layer security, secrets management  
+✅ **Monitoring**: Real-time metrics, logs, and alerts  
+✅ **Infrastructure as Code**: Reproducible infrastructure  
+✅ **Version Control**: Everything tracked in Git  
+✅ **Disaster Recovery**: Automated backups, easy rollback  
+✅ **Cost Optimization**: Resource limits, efficient scheduling  
+✅ **Compliance**: Audit logs, security scanning, RBAC
+
+---
+
+## **How to Draw in draw.io**
+
+### **Step-by-Step Guide:**
+
+1. **Open draw.io**: https://draw.io or desktop version
+2. **Create New Diagram**: File → New → Blank Diagram
+3. **Add Shapes**:
+   - Use rectangles for servers/services
+   - Use circles for processes
+   - Use cylinders for databases
+   - Use parallelograms for cloud resources
+
+4. **Color Coding**:
+   - Blue: Git/Source Control
+   - Green: Jenkins/CI
+   - Purple: Terraform/IaC
+   - Orange: Ansible/Config
+   - Cyan: Docker/Containers
+   - Navy: Kubernetes
+   - Red: Database
+   - Gray: External Services
+
+5. **Add Connectors**:
+   - Use arrows to show data flow
+   - Label arrows with protocols (HTTPS, HTTP, SSH, etc.)
+   - Use different arrow styles for different types of connections
+
+6. **Organize Sections**:
+   - Use containers/groups to organize related components
+   - Add labels for each major section
+   - Maintain left-to-right data flow
+
+7. **Add Details**:
+   - Include port numbers on connections
+   - Add environment variable callouts
+   - Include replica counts and resource limits
+   - Show network policies and security groups
+
+---
+
+This comprehensive guide provides all the information needed to create a professional CI/CD architecture diagram! 🎨
