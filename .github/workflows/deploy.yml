@@ -2,19 +2,21 @@ name: Build & Deploy to ECS (Backend + Frontend)
 
 on:
   push:
-    branches: [ "main" ]
-
+    branches: ["main"]
 env:
   AWS_REGION: ap-south-1
-  ECR_BACKEND_REPO: backend
-  ECR_FRONTEND_REPO: frontend
   ECS_CLUSTER: bookstore-cluster
   ECS_BACKEND_SERVICE: bookstore-backend-svc
   ECS_FRONTEND_SERVICE: bookstore-frontend-svc
 
+  BACKEND_TASKDEF_FAMILY: bookstore-backend
+  FRONTEND_TASKDEF_FAMILY: bookstore-frontend
+
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,36 +32,90 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & Push Backend image
+      - name: Build & Push Backend image (SHA tag)
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t backend:latest -f ./backend/Dockerfile ./backend
-          docker tag backend:latest $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }}:latest
-          docker push $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }}:latest
+          docker build -t backend:${IMAGE_TAG} -f ./backend/Dockerfile ./backend
+          docker tag backend:${IMAGE_TAG} $ECR_REGISTRY/backend:${IMAGE_TAG}
+          docker push $ECR_REGISTRY/backend:${IMAGE_TAG}
 
-      - name: Build & Push Frontend image
+      - name: Build & Push Frontend image (SHA tag)
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t frontend:latest -f ./frontend/Dockerfile ./frontend
-          docker tag frontend:latest $ECR_REGISTRY/${{ env.ECR_FRONTEND_REPO }}:latest
-          docker push $ECR_REGISTRY/${{ env.ECR_FRONTEND_REPO }}:latest
+          docker build -t frontend:${IMAGE_TAG} -f ./frontend/Dockerfile ./frontend
+          docker tag frontend:${IMAGE_TAG} $ECR_REGISTRY/frontend:${IMAGE_TAG}
+          docker push $ECR_REGISTRY/frontend:${IMAGE_TAG}
 
-      - name: Force new deployment (Backend)
+      # ---- BACKEND: create new task definition revision with new image ----
+      - name: Get current Backend task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.BACKEND_TASKDEF_FAMILY }} \
+            --query taskDefinition > backend-td.json
+
+      - name: Update Backend task definition image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          jq --arg IMG "$ECR_REGISTRY/backend:$IMAGE_TAG" '
+            .containerDefinitions[0].image = $IMG
+            | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)
+          ' backend-td.json > backend-td-new.json
+
+      - name: Register new Backend task definition
+        id: backend_td
+        run: |
+          ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://backend-td-new.json \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+          echo "arn=$ARN" >> $GITHUB_OUTPUT
+
+      - name: Deploy Backend
         run: |
           aws ecs update-service \
             --cluster ${{ env.ECS_CLUSTER }} \
             --service ${{ env.ECS_BACKEND_SERVICE }} \
-            --force-new-deployment \
+            --task-definition ${{ steps.backend_td.outputs.arn }} \
             --region ${{ env.AWS_REGION }}
 
-      - name: Force new deployment (Frontend)
+      # ---- FRONTEND: create new task definition revision with new image ----
+      - name: Get current Frontend task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.FRONTEND_TASKDEF_FAMILY }} \
+            --query taskDefinition > frontend-td.json
+
+      - name: Update Frontend task definition image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          jq --arg IMG "$ECR_REGISTRY/frontend:$IMAGE_TAG" '
+            .containerDefinitions[0].image = $IMG
+            | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)
+          ' frontend-td.json > frontend-td-new.json
+
+      - name: Register new Frontend task definition
+        id: frontend_td
+        run: |
+          ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://frontend-td-new.json \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+          echo "arn=$ARN" >> $GITHUB_OUTPUT
+
+      - name: Deploy Frontend
         run: |
           aws ecs update-service \
             --cluster ${{ env.ECS_CLUSTER }} \
             --service ${{ env.ECS_FRONTEND_SERVICE }} \
-            --force-new-deployment \
+            --task-definition ${{ steps.frontend_td.outputs.arn }} \
             --region ${{ env.AWS_REGION }}
 
       - name: Wait for services to become stable
