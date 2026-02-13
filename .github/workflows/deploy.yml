@@ -1,0 +1,68 @@
+name: Build & Deploy to ECS (Backend + Frontend)
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_BACKEND_REPO: backend
+  ECR_FRONTEND_REPO: frontend
+  ECS_CLUSTER: bookstore-cluster
+  ECS_BACKEND_SERVICE: bookstore-backend-svc
+  ECS_FRONTEND_SERVICE: bookstore-frontend-svc
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Backend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t backend:latest -f ./backend/Dockerfile ./backend
+          docker tag backend:latest $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }}:latest
+          docker push $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }}:latest
+
+      - name: Build & Push Frontend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t frontend:latest -f ./frontend/Dockerfile ./frontend
+          docker tag frontend:latest $ECR_REGISTRY/${{ env.ECR_FRONTEND_REPO }}:latest
+          docker push $ECR_REGISTRY/${{ env.ECR_FRONTEND_REPO }}:latest
+
+      - name: Force new deployment (Backend)
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_BACKEND_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Force new deployment (Frontend)
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_FRONTEND_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for services to become stable
+        run: |
+          aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_BACKEND_SERVICE }} --region ${{ env.AWS_REGION }}
+          aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_FRONTEND_SERVICE }} --region ${{ env.AWS_REGION }}
