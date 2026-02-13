@@ -18,3 +18,7 @@ backend/dist/
 *.env
 .DS_Store
 .vscode/
+
+.terraform/
+*.tfstate
+*.tfstate.*
