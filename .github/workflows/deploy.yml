@@ -2,8 +2,7 @@ name: Build & Deploy to ECS (Backend + Frontend)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
 
 env:
   AWS_REGION: ap-south-1
@@ -39,12 +38,11 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-          ECR_BACKEND_REPO: ${{ secrets.ECR_BACKEND_REPO }}
         run: |
           set -e
           docker build -t backend:${IMAGE_TAG} -f ./backend/Dockerfile ./backend
-          docker tag backend:${IMAGE_TAG} $ECR_REGISTRY/${ECR_BACKEND_REPO}:${IMAGE_TAG}
-          docker push $ECR_REGISTRY/${ECR_BACKEND_REPO}:${IMAGE_TAG}
+          docker tag backend:${IMAGE_TAG} $ECR_REGISTRY/backend:${IMAGE_TAG}
+          docker push $ECR_REGISTRY/backend:${IMAGE_TAG}
 
       - name: Get current Backend task definition
         run: |
@@ -58,10 +56,9 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-          ECR_BACKEND_REPO: ${{ secrets.ECR_BACKEND_REPO }}
         run: |
           set -e
-          jq --arg IMG "$ECR_REGISTRY/${ECR_BACKEND_REPO}:$IMAGE_TAG" '
+          jq --arg IMG "$ECR_REGISTRY/backend:$IMAGE_TAG" '
             .containerDefinitions[0].image = $IMG
             | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)
           ' backend-td.json > backend-td-new.json
@@ -91,7 +88,6 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-          ECR_FRONTEND_REPO: ${{ secrets.ECR_FRONTEND_REPO }}
         run: |
           set -e
           docker build \
@@ -106,8 +102,8 @@ jobs:
             --build-arg VITE_API_URL="${{ secrets.VITE_API_URL }}" \
             ./frontend
 
-          docker tag frontend:${IMAGE_TAG} $ECR_REGISTRY/${ECR_FRONTEND_REPO}:${IMAGE_TAG}
-          docker push $ECR_REGISTRY/${ECR_FRONTEND_REPO}:${IMAGE_TAG}
+          docker tag frontend:${IMAGE_TAG} $ECR_REGISTRY/frontend:${IMAGE_TAG}
+          docker push $ECR_REGISTRY/frontend:${IMAGE_TAG}
 
       - name: Get current Frontend task definition
         run: |
@@ -121,10 +117,9 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-          ECR_FRONTEND_REPO: ${{ secrets.ECR_FRONTEND_REPO }}
         run: |
           set -e
-          jq --arg IMG "$ECR_REGISTRY/${ECR_FRONTEND_REPO}:$IMAGE_TAG" '
+          jq --arg IMG "$ECR_REGISTRY/frontend:$IMAGE_TAG" '
             .containerDefinitions[0].image = $IMG
             | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)
           ' frontend-td.json > frontend-td-new.json
