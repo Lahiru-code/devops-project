@@ -16,7 +16,7 @@ const Banner = () => {
           It's time to update your reading list with some of the latest and
           greatest releases in the literary world. From heart-pumping thrillers
           to captivating memoirs, this week's new releasesss offer something for
-          everyone
+          everyone 2026
         </p>
 
         <button className="btn-primary">Subscribe</button>
