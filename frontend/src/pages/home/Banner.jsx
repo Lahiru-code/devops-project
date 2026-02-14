@@ -16,7 +16,7 @@ const Banner = () => {
           It's time to update your reading list with some of the latest and
           greatest releases in the literary world. From heart-pumping thrillers
           to captivating memoirs, this week's new release offer something for
-          everyone 
+          everyone   lahiru lakshan
         </p>
 
         <button className="btn-primary">Subscribe</button>
