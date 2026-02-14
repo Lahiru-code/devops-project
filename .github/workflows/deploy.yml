@@ -8,6 +8,7 @@ on:
 env:
   AWS_REGION: ap-south-1
   ECS_CLUSTER: bookstore-cluster
+
   ECS_BACKEND_SERVICE: bookstore-backend-svc
   ECS_FRONTEND_SERVICE: bookstore-frontend-svc
 
@@ -38,11 +39,12 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          ECR_BACKEND_REPO: ${{ secrets.ECR_BACKEND_REPO }}
         run: |
           set -e
           docker build -t backend:${IMAGE_TAG} -f ./backend/Dockerfile ./backend
-          docker tag backend:${IMAGE_TAG} $ECR_REGISTRY/backend:${IMAGE_TAG}
-          docker push $ECR_REGISTRY/backend:${IMAGE_TAG}
+          docker tag backend:${IMAGE_TAG} $ECR_REGISTRY/${ECR_BACKEND_REPO}:${IMAGE_TAG}
+          docker push $ECR_REGISTRY/${ECR_BACKEND_REPO}:${IMAGE_TAG}
 
       - name: Get current Backend task definition
         run: |
@@ -56,9 +58,10 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          ECR_BACKEND_REPO: ${{ secrets.ECR_BACKEND_REPO }}
         run: |
           set -e
-          jq --arg IMG "$ECR_REGISTRY/backend:$IMAGE_TAG" '
+          jq --arg IMG "$ECR_REGISTRY/${ECR_BACKEND_REPO}:$IMAGE_TAG" '
             .containerDefinitions[0].image = $IMG
             | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)
           ' backend-td.json > backend-td-new.json
@@ -88,33 +91,23 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-
-          # ✅ MUST match your GitHub Secrets names
-          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
-          VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
-          VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
-          VITE_STORAGE_BUCKET: ${{ secrets.VITE_STORAGE_BUCKET }}
-          VITE_MESSAGING_SENDER_ID: ${{ secrets.VITE_MESSAGING_SENDER_ID }}
-          VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
-
-          # ✅ your backend API url for frontend
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          ECR_FRONTEND_REPO: ${{ secrets.ECR_FRONTEND_REPO }}
         run: |
           set -e
           docker build \
             -f ./frontend/Dockerfile \
             -t frontend:${IMAGE_TAG} \
-            --build-arg VITE_API_KEY="${VITE_API_KEY}" \
-            --build-arg VITE_AUTH_DOMAIN="${VITE_AUTH_DOMAIN}" \
-            --build-arg VITE_PROJECT_ID="${VITE_PROJECT_ID}" \
-            --build-arg VITE_STORAGE_BUCKET="${VITE_STORAGE_BUCKET}" \
-            --build-arg VITE_MESSAGING_SENDER_ID="${VITE_MESSAGING_SENDER_ID}" \
-            --build-arg VITE_APP_ID="${VITE_APP_ID}" \
-            --build-arg VITE_API_URL="${VITE_API_URL}" \
+            --build-arg VITE_API_KEY="${{ secrets.VITE_API_KEY }}" \
+            --build-arg VITE_AUTH_DOMAIN="${{ secrets.VITE_AUTH_DOMAIN }}" \
+            --build-arg VITE_PROJECT_ID="${{ secrets.VITE_PROJECT_ID }}" \
+            --build-arg VITE_STORAGE_BUCKET="${{ secrets.VITE_STORAGE_BUCKET }}" \
+            --build-arg VITE_MESSAGING_SENDER_ID="${{ secrets.VITE_MESSAGING_SENDER_ID }}" \
+            --build-arg VITE_APP_ID="${{ secrets.VITE_APP_ID }}" \
+            --build-arg VITE_API_URL="${{ secrets.VITE_API_URL }}" \
             ./frontend
 
-          docker tag frontend:${IMAGE_TAG} $ECR_REGISTRY/frontend:${IMAGE_TAG}
-          docker push $ECR_REGISTRY/frontend:${IMAGE_TAG}
+          docker tag frontend:${IMAGE_TAG} $ECR_REGISTRY/${ECR_FRONTEND_REPO}:${IMAGE_TAG}
+          docker push $ECR_REGISTRY/${ECR_FRONTEND_REPO}:${IMAGE_TAG}
 
       - name: Get current Frontend task definition
         run: |
@@ -128,9 +121,10 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          ECR_FRONTEND_REPO: ${{ secrets.ECR_FRONTEND_REPO }}
         run: |
           set -e
-          jq --arg IMG "$ECR_REGISTRY/frontend:$IMAGE_TAG" '
+          jq --arg IMG "$ECR_REGISTRY/${ECR_FRONTEND_REPO}:$IMAGE_TAG" '
             .containerDefinitions[0].image = $IMG
             | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)
           ' frontend-td.json > frontend-td-new.json
