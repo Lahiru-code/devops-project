@@ -15,8 +15,8 @@ const Banner = () => {
         <p className="mb-10">
           It's time to update your reading list with some of the latest and
           greatest releases in the literary world. From heart-pumping thrillers
-          to captivating memoirs, this week's new releasesss offer something for
-          everyone 2026
+          to captivating memoirs, this week's new release offer something for
+          everyone 
         </p>
 
         <button className="btn-primary">Subscribe</button>
